@@ -2,6 +2,11 @@
 :type: output
 :no_codec:
 
+ifeval::["{versioned_docs}"=="true"]
+:branch: %BRANCH%
+:ecs_version: %BRANCH%
+endif::[]
+
 ///////////////////////////////////////////
 START - GENERATED VARIABLES, DO NOT EDIT!
 ///////////////////////////////////////////
@@ -1151,5 +1156,10 @@ Elasticsearch documentation.
 
 [id="plugins-{type}s-{plugin}-common-options"]
 include::{include_path}/{type}.asciidoc[]
+
+ifeval::["{versioned_docs}"=="true"]
+:branch: current
+:ecs_version: current
+endif::[]
 
 :no_codec!:
