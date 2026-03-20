@@ -139,7 +139,24 @@ output {
 
 ==== Writing to different indices: best practices
 
-NOTE: You cannot use dynamic variable substitution when `ilm_enabled` is `true` 
+IMPORTANT: Time-based routing in this plugin follows *one* model at a time. Do not mix them:
++
+--
+* *Data streams* — use <<plugins-{type}s-{plugin}-data_stream,`data_stream`>> and related settings.
+* *{ilm} rollover* — Logstash writes to a *rollover alias*; backing indices are named using
+  {ref}/indices-rollover-index.html#_using_date_math_with_the_rollover_api[Elasticsearch rollover naming]
+  (for example `{now/d}-000001` via <<plugins-{type}s-{plugin}-ilm_pattern,`ilm_pattern`>>), not by setting
+  `index => "prefix-%{+yyyy.MM.dd}"` for each day.
+* *Explicit `index` names* — including daily (or other) rotation with Logstash `%{+...}` syntax on
+  <<plugins-{type}s-{plugin}-index,`index`>> — is a separate approach from rollover aliases.
+--
++
+Rollover-based {ilm} and Logstash `index` date patterns solve different problems; combining them as
+one mental model leads to misconfiguration. If you rely on `index` with dynamic substitution, set
+<<plugins-{type}s-{plugin}-ilm_enabled,`ilm_enabled`>> to `false` unless you understand how the
+rollover alias overrides `index` (see <<plugins-{type}s-{plugin}-ilm,the {ilm} section>>).
+
+NOTE: You cannot use dynamic variable substitution when `ilm_enabled` is `true`
 and when using `ilm_rollover_alias`.
 
 If you're sending events to the same Elasticsearch cluster, but you're targeting different indices you can:
@@ -268,6 +285,11 @@ The default rollover alias is called `logstash`, with a default pattern for the
 rollover index of `{now/d}-00001`, which will name indices on the date that the
 index is rolled over, followed by an incrementing number. Note that the pattern
 must end with a dash and a number that will be incremented.
+
+This is *not* the same as using Logstash date formats on <<plugins-{type}s-{plugin}-index,`index`>>
+(for example `index => "logs-%{+yyyy.MM.dd}"`). The latter resolves a *different index name per event*
+from `@timestamp`; rollover expects a *stable write alias* and creates new backing indices when
+rollover runs.
 
 See the {ref}/indices-rollover-index.html#_using_date_math_with_the_rollover_api[Rollover
 API documentation] for more details on naming.
@@ -784,7 +806,9 @@ Pattern used for generating indices managed by
 specified in the pattern will be appended to the write alias, and incremented
 automatically when a new index is created by ILM.
 
-Date Math can be used when specifying an ilm pattern, see
+Here, *date math* means Elasticsearch rollover index naming (such as `{now/d}` in the pattern), not
+Logstash field syntax like `%{+yyyy.MM.dd}` on <<plugins-{type}s-{plugin}-index,`index`>>.
+Date math can be used when specifying an `ilm_pattern`; see
 {ref}/indices-rollover-index.html#_using_date_math_with_the_rollover_api[Rollover
 API docs] for details.
 
@@ -849,6 +873,13 @@ For weekly indexes ISO 8601 format is recommended, eg. logstash-%{+xxxx.ww}.
 Logstash uses
 http://www.joda.org/joda-time/apidocs/org/joda/time/format/DateTimeFormat.html[Joda
 formats] and the `@timestamp` field of each event is being used as source for the date.
+
+NOTE: When <<plugins-{type}s-{plugin}-ilm_enabled,{ilm}>> is enabled and a rollover alias is in use,
+the effective write target is the rollover alias (`ilm_rollover_alias` takes precedence over `index`).
+Daily or dynamic `index` patterns apply when you are *not* using that rollover path, or when
+<<plugins-{type}s-{plugin}-ilm_enabled,`ilm_enabled`>> is `false`. See
+<<plugins-{type}s-{plugin}-ilm,the {ilm} section>> and
+<<plugins-{type}s-{plugin}-ilm_rollover_alias,`ilm_rollover_alias`>>.
 
 [id="plugins-{type}s-{plugin}-manage_template"]
 ===== `manage_template`
